@@ -21,6 +21,8 @@ const shopRoutes = require('./routes/shop');
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+
+// all requests will have a user object which is a sequelize object that can be used in all controllers
 app.use((req, res, next) => {
   User.findByPk(1)
     .then(user => {
