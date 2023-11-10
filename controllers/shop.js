@@ -45,6 +45,26 @@ exports.getIndex = (req, res, next) => {
 };
 
 exports.getCart = (req, res, next) => {
+  
+  req.user.getCart()
+    .then(cart => {
+      return cart.getProducts();
+    })
+    .then(products => {
+      // console.log({products});
+      res.render('shop/cart', {
+        path: '/cart',
+        pageTitle: 'Your Cart',
+        products: products
+  
+      });
+    })
+    .catch(err => {
+      console.log(err);
+    });
+
+  // Before adding the one to many relationship
+  /*
   Cart.getCart(cart => {
 
     Product.fetchAll(products => {
@@ -64,15 +84,52 @@ exports.getCart = (req, res, next) => {
     });
 
   });
+  */
 };
 
 exports.postCart = (req, res, next) => {
   const prodId = req.body.productId;
+  let fetchedCart;
+  let newQuantity = 1;
+
+  req.user
+    .getCart()
+    .then(cart => {
+      fetchedCart = cart;
+      return cart.getProducts({where: {id: prodId}});
+    })
+    .then( prod => {
+      let product;
+      if (prod.length > 0) {
+        product = prod[0];
+      }
+      // If product in cart, get its quantity then increment it
+      if (product) {
+        const oldQuantity = product.cartItem.quantity;
+        newQuantity = oldQuantity + 1;
+        return product;
+      }
+      // If no product in cart, get product from Product table
+      return Product.findByPk(prodId);
+    })
+    .then(product => {
+      return fetchedCart.addProduct(product, { through: { quantity: newQuantity }});
+    })
+    .then(()=> {
+      res.redirect('/cart');
+    })
+    .catch(err => {
+      console.log(err);
+    })
+
+
+  // Before many to many relationship
+  /*
   Product.findById(prodId, (product) => {
     Cart.addProduct(prodId, product.price);
   });
   res.redirect('/cart');
-  
+  */
 };
 
 
