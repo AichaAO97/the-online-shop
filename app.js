@@ -2,9 +2,11 @@ const path = require('path');
 
 const express = require('express');
 const bodyParser = require('body-parser');
+const mongoose = require('mongoose');
 
 const errorController = require('./controllers/error');
 const User = require('./models/user');
+const MONGODB_URL = require('./config');
 
 const app = express();
 
@@ -23,9 +25,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 // all requests will have a user object
 // this is a central place where we extract the user to be used anywhere in our app
 app.use((req, res, next) => {
-  User.findById("655c7f67ae526f6271bcd1f2")
+  User.findById("6560f86c10a2e14b5459cdee")
     .then(user => {
-      req.user = new User(user.name, user.email, user.cart, user._id);
+      req.user = user;
       next();
     })
     .catch(err => console.log(err));
@@ -36,7 +38,19 @@ app.use(shopRoutes);
 
 app.use(errorController.get404);
 
-mongoConnect( () => {
-  app.listen(3000);
-});
-
+mongoose.connect(MONGODB_URL)
+  .then(result => {
+    User.findOne().then(user => {
+      if (!user) {  
+        const user = User({
+          name: 'Aicha',
+          email: 'aicha@aao.com',
+          cart: {items: []}
+        });
+        user.save();
+      }
+    });
+    app.listen(3000);
+    
+  })
+  .catch( err => console.log(err));
