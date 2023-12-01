@@ -1,0 +1,37 @@
+/* forms.css */
+
+body {
+  font-family: 'Arial', sans-serif;
+  background-color: #f4f4f4;
+  margin: 0;
+  padding: 0;
+}
+
+main {
+  max-width: 400px;
+  margin: 50px auto;
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-control {
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+input {
+  padding: 10px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  width: 100%;
+}
