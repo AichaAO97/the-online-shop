@@ -1,10 +1,14 @@
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const formData = require('form-data');
 const Mailgun = require('mailgun.js');
-const mailgun = new Mailgun(formData);
-const mg = mailgun.client({username: 'api', key: process.env.MAILGUN_API_KEY || 'a89f75ad7ff5d35d245a06b3c0d3bc1b-0a688b4a-2dc422bf'});
 
 const User = require('../models/user');
+const {API_KEY} = require('../config');
+
+const mailgun = new Mailgun(formData);
+const mg = mailgun.client({username: 'api', key: process.env.MAILGUN_API_KEY || API_KEY});
+
 
 exports.getLogin = (req, res, next) => {
   console.log(req.session);
@@ -98,7 +102,6 @@ exports.postSignup = (req, res, next) => {
         from: 'The shop app <shop@node-complete.com>',
         to: [email],
         subject: 'Signup succeeded!',
-        text: "Testing some Mailgun awesomeness!",
         html: "<h1>You successfully signed up!</h1>"
       })
       .then(msg => console.log({msg})) // logs response data
@@ -107,4 +110,101 @@ exports.postSignup = (req, res, next) => {
     .catch(err => {
       console.log(err);
     });
+};
+
+exports.getReset = (req, res, next) => {
+  let message = req.flash('error');
+  if (message.length > 0) {
+    message = message[0];
+  } else {
+    message = null;
+  }
+  res.render('auth/reset', {path: '/reset', pageTitle: 'Reset Password', errorMessage: message});
+};
+
+exports.postReset = (req, res, next) => {
+  crypto.randomBytes(32, (err, buffer)=> {
+    if (err) {
+      console.log(err);
+      return res.redirect('/reset');
+    }
+    const token = buffer.toString('hex');
+    User.findOne({email: req.body.email})
+      .then(user => {
+        if (!user) {
+          req.flash('error', 'No account with that email found.');
+          return res.redirect('/reset');
+        }
+        user.resetToken = token;
+        user.resetTokenExpiration = Date.now() + 3600000;
+        return user.save();
+      })
+      .then(result => {
+        res.redirect('/');
+        // Sending a reset pas sword email using Mailgun
+        mg.messages.create('sandbox2e0f5587af5d487db2192fb8c995f89f.mailgun.org', {
+          from: 'The shop app <shop@node-complete.com>',
+          to: [req.body.email],
+          subject: 'Password reset',
+          html: `
+            <p> You requested to reset your password </p>
+            <p> Click this <a href='http://localhost:3000/new-password/${token}'>link</a> to set a new password </p>
+          `
+        })
+        .then(msg => console.log({msg})) // logs response data
+        .catch(err => console.log({err})); // logs any error
+      })
+      .catch(err => console.log(err));
+  })
+}
+
+exports.getNewPassword = (req, res, next) => {
+  const token = req.params.token;
+  User.findOne({resetToken: token, resetTokenExpiration: {$gt: Date.now()}})
+    .then(user => {
+      if (!user) {
+        req.flash('error', 'Token expired');
+        return res.redirect('/login');
+      } else {
+        let message = req.flash('error');
+        if (message.lenght > 0) {
+          message = message[0];
+        } else {
+          message = null;
+        }
+        res.render('auth/new-password', {
+          path: '/new-password',
+          pageTitle: 'New Password',
+          errorMessage: message,
+          userId: user._id.toString(),
+          passwordToken: token
+        });
+      }
+    })
+    .catch(err => console.log(err));
+
+};
+
+exports.postNewPassword = (req, res, next) => {
+  const userId = req.body.userId;
+  const newPassword = req.body.password;
+  const passwordToken = req.body.passwordToken;
+  User.findOne({_id: userId, resetToken: passwordToken, resetTokenExpiration: {$gt: Date.now()} })
+    .then(user => {
+      if (user) {
+        return bcrypt.hash(newPassword, 12)
+          .then(hashedPassword => {
+            user.password = hashedPassword;
+            user.resetToken = undefined;
+            user.resetTokenExpiration = undefined;
+            user.save();
+          })
+          .catch(err => console.log(err));
+      }
+    })
+    .then(result => {
+      console.log(result);
+      res.redirect('/login');
+    })
+    .catch(err => console.log(err));
 };
