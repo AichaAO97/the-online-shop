@@ -35,3 +35,6 @@ input {
   border-radius: 4px;
   width: 100%;
 }
+.form-control input.invalid {
+  border-color: red;
+}

@@ -10,7 +10,7 @@ const flash = require('connect-flash');
 
 const errorController = require('./controllers/error');
 const User = require('./models/user');
-const {MONGODB_URI} = require('./config');
+const { MONGODB_URI } = require('./config');
 
 const app = express();
 const store = new MongoDBStore({
@@ -32,9 +32,9 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
 // add another middleware to configure the session set-up
 app.use(session({
-  secret: 'my-secret', 
-  resave: false, 
-  saveUninitialized: false, /*, cookie: {maxAge: }, */ 
+  secret: 'my-secret',
+  resave: false,
+  saveUninitialized: false, /*, cookie: {maxAge: }, */
   store: store
 }));
 app.use(csrfProtection);
@@ -47,11 +47,14 @@ app.use((req, res, next) => {
     return next();
   }
   User.findById(req.session.user._id)
-  .then(user => {
-    req.user = user;
-    next();
-  })
-  .catch(err => console.log(err));  
+    .then(user => {
+      if (!user) {
+        next();
+      }
+      req.user = user;
+      next();
+    })
+    .catch(err => console.log(err));
 });
 app.use((req, res, next) => {
   res.locals.isAuthenticated = req.session.isLoggedIn;
@@ -67,4 +70,4 @@ mongoose.connect(MONGODB_URI)
   .then(result => {
     app.listen(3000);
   })
-  .catch( err => console.log(err));
+  .catch(err => console.log(err));
